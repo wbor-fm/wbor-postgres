@@ -6,8 +6,8 @@ Postgres Handler.
 import os
 import logging
 import json
-import threading
 from datetime import datetime, timezone
+import time
 import psycopg
 import pika
 import pika.exceptions
@@ -26,6 +26,7 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "wbor-postgres")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_TABLE = os.getenv("POSTGRES_TABLE")
 
 # Logging
 logger = logging.getLogger(__name__)
@@ -72,27 +73,44 @@ def connect_to_postgres():
         return None
 
 
-def callback(ch, method, properties, body):
+def callback(_ch, _method, _properties, body):
     """Callback function to process messages from the RabbitMQ queue."""
+    logger.info("Callback triggered.")
     try:
         message = json.loads(body)
         logger.debug("Received message: %s", message)
 
         # Process and insert SMS data into Postgres
-        phone_number = message.get("phone_number")
-        text = message.get("text")
-        timestamp = message.get("timestamp")
+        sender_number = message.get("From")
+        message_body = message.get("Body")
+        logger.debug("Processing message from %s", sender_number)
 
         conn = connect_to_postgres()
         if conn:
             try:
                 with conn.cursor() as cursor:
+                    query = f"""
+                        INSERT INTO {POSTGRES_TABLE} ( \
+                            messagesid, \
+                            accountsid, \
+                            messagingservicesid, \
+                            from_num, \
+                            body, \
+                            nummedia, \
+                            apiversion)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
                     cursor.execute(
-                        """
-                        INSERT INTO sms_messages (phone_number, text, timestamp)
-                        VALUES (%s, %s, %s)
-                        """,
-                        (phone_number, text, timestamp),
+                        query,
+                        (
+                            message.get("MessageSid"),
+                            message.get("AccountSid"),
+                            message.get("MessagingServiceSid"),
+                            sender_number,
+                            message_body,
+                            message.get("NumMedia"),
+                            message.get("ApiVersion"),
+                        ),
                     )
                 conn.commit()
                 logger.info("Inserted message into Postgres.")
@@ -108,19 +126,25 @@ def callback(ch, method, properties, body):
 
 def consume_messages():
     """Consume messages from the RabbitMQ queue."""
-    credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-    parameters = pika.ConnectionParameters(host=RABBITMQ_HOST, credentials=credentials)
-    try:
-        connection = pika.BlockingConnection(parameters)
-        channel = connection.channel()
-        channel.queue_declare(queue=POSTGRES_QUEUE, durable=True)
-        channel.basic_consume(
-            queue=POSTGRES_QUEUE, on_message_callback=callback, auto_ack=True
+    while True:
+        logger.debug("Attempting to connect to RabbitMQ...")
+        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+        parameters = pika.ConnectionParameters(
+            host=RABBITMQ_HOST, credentials=credentials
         )
-        logger.info("Started consuming messages.")
-        channel.start_consuming()
-    except pika.exceptions.AMQPConnectionError as e:
-        logger.error("Failed to connect to RabbitMQ: %s", e)
+        try:
+            connection = pika.BlockingConnection(parameters)
+            channel = connection.channel()
+            channel.queue_declare(queue=POSTGRES_QUEUE, durable=True)
+            channel.basic_consume(
+                queue=POSTGRES_QUEUE, on_message_callback=callback, auto_ack=True
+            )
+            logger.info("Now ready to consume messages.")
+            channel.start_consuming()
+        except pika.exceptions.AMQPConnectionError as e:
+            logger.error("Failed to connect to RabbitMQ: %s", e)
+            logger.info("Retrying in 5 seconds...")
+            time.sleep(5)
 
 
 @app.route("/")
@@ -130,7 +154,6 @@ def hello_world():
 
 
 if __name__ == "__main__":
-    consumer_thread = threading.Thread(target=consume_messages, daemon=True)
-    consumer_thread.start()
-
+    logger.info("Starting Flask app and RabbitMQ consumer...")
+    consume_messages()
     app.run(host="0.0.0.0", port=APP_PORT)
