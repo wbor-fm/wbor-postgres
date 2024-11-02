@@ -135,6 +135,11 @@ def callback(_ch, _method, _properties, body):
                         + location_values
                         + media_values
                     )
+                    
+                    # Check if the number of columns matches the number of values
+                    if len(columns) != len(values):
+                        raise ValueError("Mismatch between columns and values: "
+                                        f"{len(columns)} columns, {len(values)} values")
 
                     # Build the query with dynamic columns
                     query = f"""
