@@ -92,7 +92,7 @@ def callback(_ch, _method, _properties, body):
                     location_values = []
                     for loc_type in ["FromCity", "FromState", "FromCountry", "FromZip"]:
                         if message.get(loc_type):
-                            location_columns.append(loc_type)
+                            location_columns.append(f"\"{loc_type}\"")
                             location_values.append(message.get(loc_type))
 
                     # Prepare additional columns and values for media items
@@ -103,11 +103,11 @@ def callback(_ch, _method, _properties, body):
                         media_url_key = f"MediaUrl{i}"
 
                         if message.get(media_type_key):
-                            media_columns.append(f"MediaContentType{i}")
+                            media_columns.append(f"\"MediaContentType{i}\"")
                             media_values.append(message.get(media_type_key))
 
                         if message.get(media_url_key):
-                            media_columns.append(f"MediaUrl{i}")
+                            media_columns.append(f"\"MediaUrl{i}\"")
                             media_values.append(message.get(media_url_key))
 
                     # Combine static columns with dynamic columns
