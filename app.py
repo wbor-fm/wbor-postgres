@@ -119,6 +119,7 @@ def callback(_ch, _method, _properties, body):
                             '"From"',
                             '"To"',
                             '"Body"',
+                            '"NumSegments"',
                             '"NumMedia"',
                             '"ApiVersion"',
                         ]
@@ -133,6 +134,7 @@ def callback(_ch, _method, _properties, body):
                             message.get("From"),
                             message.get("To"),
                             message.get("Body"),
+                            message.get("NumSegments"),
                             message.get("NumMedia"),
                             message.get("ApiVersion"),
                         ]
