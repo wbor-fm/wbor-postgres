@@ -81,37 +81,68 @@ def callback(_ch, _method, _properties, body):
         logger.debug("Received message: %s", message)
 
         # Process and insert SMS data into Postgres
-        sender_number = message.get("From")
-        message_body = message.get("Body")
-        logger.debug("Processing message from %s", sender_number)
+        logger.debug("Processing message from %s", message.get("From"))
 
         conn = connect_to_postgres()
         if conn:
             try:
                 with conn.cursor() as cursor:
-                    query = f"""
-                        INSERT INTO {POSTGRES_TABLE} ( \
-                            messagesid, \
-                            accountsid, \
-                            messagingservicesid, \
-                            from_num, \
-                            body, \
-                            nummedia, \
-                            apiversion)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(
-                        query,
-                        (
+                    # Prepare additional columns and values for From(LocationType) if they exist
+                    location_columns = []
+                    location_values = []
+                    for loc_type in ["FromCity", "FromState", "FromCountry", "FromZip"]:
+                        if message.get(loc_type):
+                            location_columns.append(loc_type)
+                            location_values.append(message.get(loc_type))
+
+                    # Prepare additional columns and values for media items
+                    media_columns = []
+                    media_values = []
+                    for i in range(10):
+                        media_type_key = f"MediaContentType{i}"
+                        media_url_key = f"MediaUrl{i}"
+
+                        if message.get(media_type_key):
+                            media_columns.append(f"MediaContentType{i}")
+                            media_values.append(message.get(media_type_key))
+
+                        if message.get(media_url_key):
+                            media_columns.append(f"MediaUrl{i}")
+                            media_values.append(message.get(media_url_key))
+
+                    # Combine static columns with dynamic columns
+                    columns = [
+                        "MessageSid",
+                        "AccountSid",
+                        "MessagingServiceSid",
+                        "From",
+                        "To",
+                        "Body",
+                        "NumMedia",
+                        "ApiVersion",
+                    ] + media_columns
+                    values = (
+                        [
                             message.get("MessageSid"),
                             message.get("AccountSid"),
                             message.get("MessagingServiceSid"),
-                            sender_number,
-                            message_body,
+                            message.get("From"),
+                            message.get("To"),
+                            message.get("Body"),
                             message.get("NumMedia"),
                             message.get("ApiVersion"),
-                        ),
+                        ]
+                        + location_values
+                        + media_values
                     )
+
+                    # Build the query with dynamic columns
+                    query = f"""
+                        INSERT INTO {POSTGRES_TABLE} ({', '.join(columns)})
+                        VALUES ({', '.join(['%s'] * len(values))})
+                    """
+                    cursor.execute(query, values)
+
                 conn.commit()
                 logger.info("Inserted message into Postgres.")
             except psycopg.errors.DatabaseError as db_error:
