@@ -112,14 +112,14 @@ def callback(_ch, _method, _properties, body):
 
                     # Combine static columns with dynamic columns
                     columns = [
-                        "MessageSid",
-                        "AccountSid",
-                        "MessagingServiceSid",
-                        "From",
-                        "To",
-                        "Body",
-                        "NumMedia",
-                        "ApiVersion",
+                        "\"MessageSid\"",
+                        "\"AccountSid\"",
+                        "\"MessagingServiceSid\"",
+                        "\"From\"",
+                        "\"To\"",
+                        "\"Body\"",
+                        "\"NumMedia\"",
+                        "\"ApiVersion\"",
                     ] + media_columns
                     values = (
                         [
