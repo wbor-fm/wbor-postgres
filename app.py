@@ -122,7 +122,7 @@ def callback(_ch, _method, _properties, body):
                             '"NumMedia"',
                             '"ApiVersion"',
                         ]
-                        + location_values
+                        + location_columns
                         + media_columns
                     )
                     values = (
