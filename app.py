@@ -111,16 +111,20 @@ def callback(_ch, _method, _properties, body):
                             media_values.append(message.get(media_url_key))
 
                     # Combine static columns with dynamic columns
-                    columns = [
-                        "\"MessageSid\"",
-                        "\"AccountSid\"",
-                        "\"MessagingServiceSid\"",
-                        "\"From\"",
-                        "\"To\"",
-                        "\"Body\"",
-                        "\"NumMedia\"",
-                        "\"ApiVersion\"",
-                    ] + media_columns
+                    columns = (
+                        [
+                            '"MessageSid"',
+                            '"AccountSid"',
+                            '"MessagingServiceSid"',
+                            '"From"',
+                            '"To"',
+                            '"Body"',
+                            '"NumMedia"',
+                            '"ApiVersion"',
+                        ]
+                        + location_values
+                        + media_columns
+                    )
                     values = (
                         [
                             message.get("MessageSid"),
@@ -135,11 +139,13 @@ def callback(_ch, _method, _properties, body):
                         + location_values
                         + media_values
                     )
-                    
+
                     # Check if the number of columns matches the number of values
                     if len(columns) != len(values):
-                        raise ValueError("Mismatch between columns and values: "
-                                        f"{len(columns)} columns, {len(values)} values")
+                        raise ValueError(
+                            "Mismatch between columns and values: "
+                            f"{len(columns)} columns, {len(values)} values"
+                        )
 
                     # Build the query with dynamic columns
                     query = f"""
