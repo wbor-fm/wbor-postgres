@@ -4,7 +4,7 @@ Postgres Handler.
 """
 
 import os
-import threading
+import multiprocessing
 import logging
 import json
 from datetime import datetime, timezone
@@ -223,7 +223,7 @@ def retry_dead_messages():
             channel = connection.channel()
 
             # Consume messages from the dead-letter queue
-            def retry_callback(ch, method, properties, body):
+            def retry_callback(ch, method, _properties, body):
                 logger.info("Retrying message from dead-letter queue.")
                 ch.basic_publish(exchange="", routing_key=POSTGRES_QUEUE, body=body)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -250,11 +250,11 @@ def hello_world():
 if __name__ == "__main__":
     logger.info("Starting Flask app and RabbitMQ consumer...")
 
-    main_consumer_thread = threading.Thread(target=consume_messages)
-    main_consumer_thread.start()
+    main_consumer_process = multiprocessing.Process(target=consume_messages)
+    main_consumer_process.start()
 
-    # Start the retry consumer in a separate thread
-    retry_consumer_thread = threading.Thread(target=retry_dead_messages)
-    retry_consumer_thread.start()
+    # Start the retry consumer in a separate process
+    retry_consumer_process = multiprocessing.Process(target=retry_dead_messages)
+    retry_consumer_process.start()
 
     app.run(host="0.0.0.0", port=APP_PORT)
