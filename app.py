@@ -262,15 +262,6 @@ def hello_world():
 if __name__ == "__main__":
     logger.info("Starting Flask app and RabbitMQ consumer...")
 
-    main_consumer_process = multiprocessing.Process(target=consume_messages)
-    main_consumer_process.start()
-
-    # Start the retry consumer in a separate process
-    retry_consumer_process = multiprocessing.Process(target=retry_dead_messages)
-    retry_consumer_process.start()
+    consume_messages()
 
     app.run(host="0.0.0.0", port=APP_PORT)
-
-    # Ensure the processes are terminated when the Flask app stops
-    main_consumer_process.join()
-    retry_consumer_process.join()
