@@ -176,7 +176,9 @@ def consume_messages():
         logger.debug("Attempting to connect to RabbitMQ...")
         credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
         parameters = pika.ConnectionParameters(
-            host=RABBITMQ_HOST, credentials=credentials
+            host=RABBITMQ_HOST,
+            credentials=credentials,
+            client_properties={"connection_name": "MainConsumerConnection"},
         )
         try:
             connection = pika.BlockingConnection(parameters)
@@ -208,6 +210,10 @@ def consume_messages():
             logger.error("Failed to connect to RabbitMQ: %s", e)
             logger.debug("Retrying in 5 seconds...")
             time.sleep(5)
+        except pika.exceptions.ChannelClosedByBroker as e:
+            logger.error("Channel closed by broker: %s", e)
+            logger.debug("Retrying in 5 seconds...")
+            time.sleep(5)
 
 
 def retry_dead_messages():
@@ -216,7 +222,9 @@ def retry_dead_messages():
         logger.debug("Attempting to connect to RabbitMQ for retry...")
         credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
         parameters = pika.ConnectionParameters(
-            host=RABBITMQ_HOST, credentials=credentials
+            host=RABBITMQ_HOST,
+            credentials=credentials,
+            client_properties={"connection_name": "RetryConsumerConnection"},
         )
         try:
             connection = pika.BlockingConnection(parameters)
@@ -239,6 +247,10 @@ def retry_dead_messages():
             logger.error("Failed to connect to RabbitMQ for retry: %s", e)
             logger.debug("Retrying in 5 seconds...")
             time.sleep(5)
+        except pika.exceptions.ChannelClosedByBroker as e:
+            logger.error("Channel closed by broker: %s", e)
+            logger.debug("Retrying in 5 seconds...")
+            time.sleep(5)
 
 
 @app.route("/")
@@ -258,3 +270,7 @@ if __name__ == "__main__":
     retry_consumer_process.start()
 
     app.run(host="0.0.0.0", port=APP_PORT)
+
+    # Ensure the processes are terminated when the Flask app stops
+    main_consumer_process.join()
+    retry_consumer_process.join()
