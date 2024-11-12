@@ -1,6 +1,5 @@
 @startuml Sequence Diagram
 participant FlaskApp
-participant Logger
 participant Postgres
 participant RabbitMQ
 

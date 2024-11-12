@@ -4,7 +4,6 @@ Postgres Handler.
 """
 
 import os
-import multiprocessing
 import logging
 import json
 from datetime import datetime, timezone
@@ -123,6 +122,7 @@ def callback(ch, method, _properties, body):
                             '"NumSegments"',
                             '"NumMedia"',
                             '"ApiVersion"',
+                            '"SenderName"',
                         ]
                         + location_columns
                         + media_columns
@@ -138,6 +138,7 @@ def callback(ch, method, _properties, body):
                             message.get("NumSegments"),
                             message.get("NumMedia"),
                             message.get("ApiVersion"),
+                            message.get("SenderName"),
                         ]
                         + location_values
                         + media_values
