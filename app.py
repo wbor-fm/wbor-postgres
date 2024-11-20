@@ -179,11 +179,16 @@ def consume_messages():
         parameters = pika.ConnectionParameters(
             host=RABBITMQ_HOST,
             credentials=credentials,
-            client_properties={"connection_name": "MainConsumerConnection"},
+            client_properties={"connection_name": "PostgresConsumerConnection"},
         )
         try:
             connection = pika.BlockingConnection(parameters)
             channel = connection.channel()
+
+            # Assert the exchange exists
+            channel.exchange_declare(
+                exchange="source_exchange", exchange_type="topic", durable=True
+            )
 
             # Declare the dead-letter exchange and queue
             channel.exchange_declare(
@@ -202,6 +207,13 @@ def consume_messages():
                     "x-dead-letter-exchange": "dead_letter_exchange",
                 },
             )
+
+            channel.queue_bind(
+                exchange="source_exchange",
+                queue=POSTGRES_QUEUE,
+                routing_key="source.twilio",
+            )
+
             channel.basic_consume(
                 queue=POSTGRES_QUEUE, on_message_callback=callback, auto_ack=False
             )  # auto_ack=False to ensure messages are not lost if the consumer crashes
@@ -261,8 +273,5 @@ def hello_world():
 
 
 if __name__ == "__main__":
-    logger.info("Starting Flask app and RabbitMQ consumer...")
-
     consume_messages()
-
     app.run(host="0.0.0.0", port=APP_PORT)
