@@ -157,12 +157,12 @@ def callback(ch, method, _properties, body):
                         VALUES ({', '.join(['%s'] * len(values))})
                     """
                     cursor.execute(query, values)
-
                 conn.commit()
                 logger.info("Inserted message into Postgres.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
             except psycopg.errors.DatabaseError as db_error:
                 logger.error("Database error during insertion: %s", db_error)
+                ch.basic_nack(delivery_tag=method.delivery_tag)
             finally:
                 conn.close()
         else:
@@ -216,7 +216,7 @@ def consume_messages():
 
             channel.basic_consume(
                 queue=POSTGRES_QUEUE, on_message_callback=callback, auto_ack=False
-            )  # auto_ack=False to ensure messages are not lost if the consumer crashes
+            )
             logger.info("Now ready to consume messages.")
             channel.start_consuming()
         except pika.exceptions.AMQPConnectionError as e:
@@ -237,7 +237,7 @@ def retry_dead_messages():
         parameters = pika.ConnectionParameters(
             host=RABBITMQ_HOST,
             credentials=credentials,
-            client_properties={"connection_name": "RetryConsumerConnection"},
+            client_properties={"connection_name": "PgRetryConsumerConnection"},
         )
         try:
             connection = pika.BlockingConnection(parameters)
@@ -274,4 +274,5 @@ def hello_world():
 
 if __name__ == "__main__":
     consume_messages()
+    retry_dead_messages()
     app.run(host="0.0.0.0", port=APP_PORT)
