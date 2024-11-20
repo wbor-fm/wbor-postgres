@@ -123,6 +123,7 @@ def callback(ch, method, _properties, body):
                             '"NumMedia"',
                             '"ApiVersion"',
                             '"SenderName"',
+                            '"wbor_message_id'
                         ]
                         + location_columns
                         + media_columns
@@ -139,6 +140,7 @@ def callback(ch, method, _properties, body):
                             message.get("NumMedia"),
                             message.get("ApiVersion"),
                             message.get("SenderName"),
+                            message.get("wbor_message_id")
                         ]
                         + location_values
                         + media_values
