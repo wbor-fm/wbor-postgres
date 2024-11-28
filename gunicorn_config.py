@@ -10,7 +10,7 @@ def post_fork(server, worker):
     logger.info("Starting consumers in worker process.")
 
     # Initialize consumers
-    primary_consumer = PrimaryQueueConsumer(queue_name="postgres", routing_key="source.twilio")
+    primary_consumer = PrimaryQueueConsumer(queue_name="postgres", routing_key="source.twilio.#")
     dead_letter_consumer = DeadLetterQueueConsumer()
 
     # Define consumer threads

@@ -30,6 +30,10 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_TABLE = os.getenv("POSTGRES_TABLE")
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))
 
+
+MESSAGE_HANDLERS = {}
+
+
 # Logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -53,6 +57,100 @@ logger.addHandler(console_handler)
 logging.getLogger("werkzeug").setLevel(logging.INFO)
 
 app = Flask(__name__)
+
+
+def register_message_handler(message_type):
+    """Decorator to register a handler for a specific message type."""
+
+    def decorator(func):
+        MESSAGE_HANDLERS[message_type] = func
+        return func
+
+    return decorator
+
+
+@register_message_handler("twilio_sms")
+def handle_twilio_sms(message, cursor):
+    """Handle insertion of Twilio SMS messages."""
+    # Prepare additional columns and values for From(LocationType) if they exist
+    location_columns = []
+    location_values = []
+    for loc_type in ["FromCity", "FromState", "FromCountry", "FromZip"]:
+        if message.get(loc_type):
+            location_columns.append(f'"{loc_type}"')
+            location_values.append(message.get(loc_type))
+
+    # Prepare additional columns and values for media items
+    media_columns = []
+    media_values = []
+    for i in range(10):
+        media_type_key = f"MediaContentType{i}"
+        media_url_key = f"MediaUrl{i}"
+
+        if message.get(media_type_key):
+            media_columns.append(f'"MediaContentType{i}"')
+            media_values.append(message.get(media_type_key))
+
+        if message.get(media_url_key):
+            media_columns.append(f'"MediaUrl{i}"')
+            media_values.append(message.get(media_url_key))
+
+    # Combine static columns with dynamic columns
+    columns = (
+        [
+            '"MessageSid"',
+            '"AccountSid"',
+            '"MessagingServiceSid"',
+            '"From"',
+            '"To"',
+            '"Body"',
+            '"NumSegments"',
+            '"NumMedia"',
+            '"ApiVersion"',
+            '"SenderName"',
+            '"wbor_message_id"',
+        ]
+        + location_columns
+        + media_columns
+    )
+    values = (
+        [
+            message.get("MessageSid"),
+            message.get("AccountSid"),
+            message.get("MessagingServiceSid"),
+            message.get("From"),
+            message.get("To"),
+            message.get("Body"),
+            message.get("NumSegments"),
+            message.get("NumMedia"),
+            message.get("ApiVersion"),
+            message.get("SenderName"),
+            message.get("wbor_message_id"),
+        ]
+        + location_values
+        + media_values
+    )
+
+    # Build the query with dynamic columns
+    query = f"""
+        INSERT INTO {POSTGRES_TABLE} ({', '.join(columns)})
+        VALUES ({', '.join(['%s'] * len(values))})
+    """
+    cursor.execute(query, values)
+
+
+# Example handler for generic messages
+# @register_message_handler("generic_event")
+# def handle_generic_event(message, cursor):
+#     """Handle insertion of generic event messages."""
+#     query = f"""
+#         INSERT INTO {POSTGRES_TABLE} ("event_id", "event_name", "timestamp")
+#         VALUES (%s, %s, %s)
+#     """
+#     cursor.execute(
+#         query,
+#         (message.get("event_id"), message.get("event_name"), message.get("timestamp")),
+#     )
 
 
 class RabbitMQBaseConsumer:
@@ -179,7 +277,27 @@ class DeadLetterQueueConsumer(RabbitMQBaseConsumer):
 
 
 def insert_message_into_postgres(message):
-    """Insert a message into the Postgres database."""
+    """
+    Dispatch message to the appropriate handler based on type.
+    
+    Type is determined by the 'type' field in the message JSON body.
+
+    Parameters:
+    - message: JSON object representing the message to be processed.
+
+    Raises:
+    - ValueError: If the message does not contain a 'type' field.
+    - ValueError: If no handler is registered for the message type.
+    - psycopg.errors.DatabaseError: If there is an issue inserting the message into Postgres.
+    """
+    message_type = message.get("type")
+    if not message_type:
+        raise ValueError("Message does not contain a 'type' field.")
+
+    handler = MESSAGE_HANDLERS.get(message_type)
+    if not handler:
+        raise ValueError(f"No handler registered for message type: {message_type}")
+
     try:
         conn = psycopg.connect(
             host=POSTGRES_HOST,
@@ -188,80 +306,9 @@ def insert_message_into_postgres(message):
             password=POSTGRES_PASSWORD,
         )
         with conn.cursor() as cursor:
-            # Prepare additional columns and values for From(LocationType) if they exist
-            location_columns = []
-            location_values = []
-            for loc_type in ["FromCity", "FromState", "FromCountry", "FromZip"]:
-                if message.get(loc_type):
-                    location_columns.append(f'"{loc_type}"')
-                    location_values.append(message.get(loc_type))
-
-            # Prepare additional columns and values for media items
-            media_columns = []
-            media_values = []
-            for i in range(10):
-                media_type_key = f"MediaContentType{i}"
-                media_url_key = f"MediaUrl{i}"
-
-                if message.get(media_type_key):
-                    media_columns.append(f'"MediaContentType{i}"')
-                    media_values.append(message.get(media_type_key))
-
-                if message.get(media_url_key):
-                    media_columns.append(f'"MediaUrl{i}"')
-                    media_values.append(message.get(media_url_key))
-
-            # Combine static columns with dynamic columns
-            columns = (
-                [
-                    '"MessageSid"',
-                    '"AccountSid"',
-                    '"MessagingServiceSid"',
-                    '"From"',
-                    '"To"',
-                    '"Body"',
-                    '"NumSegments"',
-                    '"NumMedia"',
-                    '"ApiVersion"',
-                    '"SenderName"',
-                    '"wbor_message_id"',
-                ]
-                + location_columns
-                + media_columns
-            )
-            values = (
-                [
-                    message.get("MessageSid"),
-                    message.get("AccountSid"),
-                    message.get("MessagingServiceSid"),
-                    message.get("From"),
-                    message.get("To"),
-                    message.get("Body"),
-                    message.get("NumSegments"),
-                    message.get("NumMedia"),
-                    message.get("ApiVersion"),
-                    message.get("SenderName"),
-                    message.get("wbor_message_id"),
-                ]
-                + location_values
-                + media_values
-            )
-
-            # Check if the number of columns matches the number of values
-            if len(columns) != len(values):
-                raise ValueError(
-                    "Mismatch between columns and values: "
-                    f"{len(columns)} columns, {len(values)} values"
-                )
-
-            # Build the query with dynamic columns
-            query = f"""
-                INSERT INTO {POSTGRES_TABLE} ({', '.join(columns)})
-                VALUES ({', '.join(['%s'] * len(values))})
-            """
-            cursor.execute(query, values)
+            handler(message, cursor)
             conn.commit()
-        logger.info("Inserted message into Postgres.")
+        logger.info("Successfully inserted message into Postgres.")
     except psycopg.errors.DatabaseError as db_error:
         logger.error("Database error: %s", db_error)
         raise
@@ -274,24 +321,22 @@ def callback(ch, method, properties, body):
     """
     Make a connection to Postgres and insert the message into the database.
     """
-    logger.info("Callback triggered.")
+    logger.debug(
+        "Callback triggered." "Processing message with routing key: %s",
+        method.routing_key,
+    )
 
-    retry_count = 0 # Safeguard against NoneType for headers
+    retry_count = 0  # Safeguard against NoneType for headers
     if properties and properties.headers:
         retry_count = properties.headers.get("x-retry-count", 0)
 
     try:
         message = json.loads(body)
         logger.debug("Processing message: %s", message)
-
-        # Connect to Postgres and insert the message
         insert_message_into_postgres(message)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except psycopg.errors.DatabaseError as db_error:
-        logger.error("Error processing message: %s", db_error)
-        retry_message(ch, method, body, retry_count)
-    except (json.JSONDecodeError, KeyError) as e:
-        logger.error("Failed to process message: %s", e)
+    except (psycopg.errors.DatabaseError, ValueError, json.JSONDecodeError) as error:
+        logger.error("Error processing message: %s", error)
         retry_message(ch, method, body, retry_count)
 
 
