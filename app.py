@@ -83,7 +83,7 @@ class RabbitMQBaseConsumer:
             exchange=self.exchange, exchange_type="topic", durable=True
         )
         self.channel.exchange_declare(
-            exchange="dead_letter_exchange", exchange_type="direct"
+            exchange="dead_letter_exchange", exchange_type="direct", durable=True
         )
 
         try:
@@ -92,6 +92,7 @@ class RabbitMQBaseConsumer:
                 durable=True,
                 arguments={
                     "x-message-ttl": 60000,
+                    "x-dead-letter-exchange": "dead_letter_exchange",
                 },
             )
         except pika.exceptions.ChannelClosedByBroker as e:
