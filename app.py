@@ -275,7 +275,11 @@ def callback(ch, method, properties, body):
     Make a connection to Postgres and insert the message into the database.
     """
     logger.info("Callback triggered.")
-    retry_count = properties.headers.get("x-retry-count", 0)
+
+    retry_count = 0 # Safeguard against NoneType for headers
+    if properties and properties.headers:
+        retry_count = properties.headers.get("x-retry-count", 0)
+
     try:
         message = json.loads(body)
         logger.debug("Processing message: %s", message)
