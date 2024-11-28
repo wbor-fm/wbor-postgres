@@ -94,10 +94,18 @@ class RabbitMQBaseConsumer:
                     "x-message-ttl": 60000,
                 },
             )
-        except pika.exceptions.ChannelClosedByBroker:
-            logger.warning(
-                "Queue 'dead_letter_queue' already exists with different attributes."
-            )
+        except pika.exceptions.ChannelClosedByBroker as e:
+            if "inequivalent arg" in str(e):
+                logger.warning(
+                    "Queue 'dead_letter_queue' already exists with different attributes."
+                    "Skipping redeclaration."
+                )
+                self.connection = pika.BlockingConnection(
+                    self.connection.connection_parameters
+                )
+                self.channel = self.connection.channel()
+            else:
+                raise
 
         self.channel.queue_bind(
             exchange="dead_letter_exchange", queue="dead_letter_queue"
