@@ -313,26 +313,5 @@ def hello_world():
 
 
 if __name__ == "__main__":
-    primary_consumer = PrimaryQueueConsumer(
-        queue_name=POSTGRES_QUEUE, routing_key="source.twilio"
-    )
-    dead_letter_consumer = DeadLetterQueueConsumer()
-
-    # Setup connections
-    primary_consumer.connect()
-    primary_consumer.setup_queues()
-    dead_letter_consumer.connect()
-    dead_letter_consumer.setup_queues()
-
-    signal.signal(
-        signal.SIGINT,
-        lambda sig, _: signal_handler([primary_consumer, dead_letter_consumer], sig, _),
-    )
-    signal.signal(
-        signal.SIGTERM,
-        lambda sig, _: signal_handler([primary_consumer, dead_letter_consumer], sig, _),
-    )
-
-    logger.info("Starting consumers...")
-    primary_consumer.consume_messages()
-    dead_letter_consumer.retry_messages()
+    # Only start the Flask app; Gunicorn handles consumer initialization
+    app.run(host="0.0.0.0", port=3000)
