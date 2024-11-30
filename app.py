@@ -69,7 +69,7 @@ def register_message_handler(message_type):
     return decorator
 
 
-@register_message_handler("twilio_sms")
+@register_message_handler("sms")
 def handle_twilio_sms(message, cursor):
     """Handle insertion of Twilio SMS messages."""
     # Prepare additional columns and values for From(LocationType) if they exist
@@ -322,7 +322,7 @@ def callback(ch, method, properties, body):
     Make a connection to Postgres and insert the message into the database.
     """
     logger.debug(
-        "Callback triggered." "Processing message with routing key: %s",
+        "Callback triggered. Processing message with routing key: %s",
         method.routing_key,
     )
 
