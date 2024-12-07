@@ -103,9 +103,11 @@ def handle_twilio_sms(message, cursor):
     execute_query(cursor, query, values)
 
 
-@register_message_handler("groupme")
-def handle_generic_event(message, cursor):
-    """Handle insertion of generic event messages."""
+@register_message_handler("groupme.msg")
+def handle_message_event(message, cursor):
+    """
+    Handle insertion of text message logs from GroupMe.
+    """
     # Prepare the columns and values to insert
     columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"']
     values = [
@@ -114,6 +116,27 @@ def handle_generic_event(message, cursor):
         message.get("code"),
         message.get("type"),
         message.get("uid"),
+    ]
+
+    # Build and execute the SQL query
+    query, values = build_insert_query(GROUPME_TABLE, columns, values)
+    cursor.execute(query, values)
+
+
+@register_message_handler("groupme.img")
+def handle_image_event(message, cursor):
+    """
+    Handle insertion of image message logs from GroupMe.
+    """
+    # Prepare the columns and values to insert
+    columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"', '"picture_url"']
+    values = [
+        message.get("text"),  # Unlikely to be used based on current implementation
+        message.get("bot_id"),
+        message.get("code"),
+        message.get("type"),
+        message.get("uid"),
+        message.get("picture_url"),
     ]
 
     # Build and execute the SQL query
