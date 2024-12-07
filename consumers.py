@@ -23,7 +23,7 @@ logger = configure_logging(__name__)
 
 def callback(ch, method, properties, body):
     """
-    Handle incoming RabbitMQ messages by routing to the appropriate handler based 
+    Handle incoming RabbitMQ messages by routing to the appropriate handler based
     on the routing_key.
     """
     logger.debug(
@@ -39,7 +39,7 @@ def callback(ch, method, properties, body):
     try:
         message = json.loads(body)
         routing_key = method.routing_key.removeprefix("source.")
-        logger.debug("Processing message: %s", message)
+        logger.info("Processing message: %s", message)
         logger.debug("Stripped routing key: `%s`", routing_key)
 
         # Depending on the routing key, perform different actions

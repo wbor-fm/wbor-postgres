@@ -24,14 +24,16 @@ def register_message_handler(message_type):
 @register_message_handler("postgres")
 def handle_postgres_data(message, cursor):
     """
-    Testing
+    TODO: Not sure what to do here just yet.
+
+    This handler exists so that the DLQ doesn't infinitely retry messages.
     """
 
 
-@register_message_handler("sms")
+@register_message_handler("twilio.sms.incoming")
 def handle_twilio_sms(message, cursor):
     """
-    Handle insertion of Twilio SMS messages.
+    Handle insertion of incoming Twilio SMS messages.
 
     Calls database.execute_query with the appropriate query and values.
 
@@ -102,6 +104,7 @@ def handle_twilio_sms(message, cursor):
         VALUES ({', '.join(['%s'] * len(values))})
     """
     execute_query(cursor, query, values)
+
 
 # @register_message_handler("groupme")
 # def handle_generic_event(message, routing_key cursor):
