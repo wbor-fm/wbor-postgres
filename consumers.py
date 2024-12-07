@@ -5,6 +5,7 @@ RabbitMQ consumers for the primary and dead-letter queues.
 import json
 import psycopg
 import pika
+import pika.exceptions
 from utils.logging import configure_logging
 from retry import retry_message
 from database import get_db_connection

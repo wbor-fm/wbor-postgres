@@ -106,21 +106,30 @@ def handle_twilio_sms(message, cursor):
     execute_query(cursor, query, values)
 
 
-# @register_message_handler("groupme")
-# def handle_generic_event(message, routing_key cursor):
-#     """Handle insertion of generic event messages."""
-#     query = f"""
-#         INSERT INTO {GROUPME_TABLE} ("event_id", "event_name", "timestamp")
-#         VALUES (%s, %s, %s)
-#     """
-#     cursor.execute(
-#         query,
-#         (message.get("event_id"), message.get("event_name"), message.get("timestamp")),
-#     )
+@register_message_handler("groupme")
+def handle_generic_event(message, cursor):
+    """Handle insertion of generic event messages."""
+    # Prepare the columns and values to insert
+    columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"']
+    values = [
+        message.get("text"),
+        message.get("bot_id"),
+        message.get("code"),
+        message.get("type"),
+        message.get("uid"),
+    ]
+
+    # Build and execute the SQL query
+    query = f"""
+        INSERT INTO {GROUPME_TABLE} ({', '.join(columns)})
+        VALUES ({', '.join(['%s'] * len(values))})
+    """
+    cursor.execute(query, values)
+
 
 # Example handler for generic messages
 # @register_message_handler("generic_event")
-# def handle_generic_event(message, routing_key cursor):
+# def handle_generic_event(message, cursor):
 #     """Handle insertion of generic event messages."""
 #     query = f"""
 #         INSERT INTO {POSTGRES_TABLE} ("event_id", "event_name", "timestamp")

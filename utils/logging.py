@@ -8,7 +8,7 @@ from colorlog import ColoredFormatter
 import pytz
 
 
-def configure_logging(logger_name="wbor_groupme"):
+def configure_logging(logger_name="wbor_postgres"):
     """
     Set up logging with colorized output and timestamps in Eastern Time.
     """
