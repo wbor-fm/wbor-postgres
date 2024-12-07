@@ -24,6 +24,26 @@ def get_db_connection():
     )
 
 
+def build_insert_query(table_name, columns, values):
+    """
+    Build a parameterized SQL INSERT query.
+
+    Parameters:
+    - table_name (str): Name of the target database table.
+    - columns (list): List of column names to insert values into.
+    - values (list): List of corresponding values to insert.
+
+    Returns:
+    - tuple: (query, values) where `query` is the constructed SQL string
+             and `values` is the list of values for parameterized execution.
+    """
+    query = f"""
+        INSERT INTO {table_name} ({', '.join(columns)})
+        VALUES ({', '.join(['%s'] * len(values))})
+    """
+    return query, values
+
+
 def execute_query(cursor, query, values):
     """
     Execute a SQL query with the given values.

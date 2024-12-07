@@ -3,7 +3,7 @@ Implement business logic for processing messages based on their type or purpose.
 """
 
 from utils.logging import configure_logging
-from database import execute_query
+from database import build_insert_query, execute_query
 from config import MESSAGES_TABLE, GROUPME_TABLE
 
 logger = configure_logging(__name__)
@@ -99,10 +99,7 @@ def handle_twilio_sms(message, cursor):
     )
 
     # Build the query with dynamic columns
-    query = f"""
-        INSERT INTO {MESSAGES_TABLE} ({', '.join(columns)})
-        VALUES ({', '.join(['%s'] * len(values))})
-    """
+    query, values = build_insert_query(MESSAGES_TABLE, columns, values)
     execute_query(cursor, query, values)
 
 
@@ -120,10 +117,7 @@ def handle_generic_event(message, cursor):
     ]
 
     # Build and execute the SQL query
-    query = f"""
-        INSERT INTO {GROUPME_TABLE} ({', '.join(columns)})
-        VALUES ({', '.join(['%s'] * len(values))})
-    """
+    query, values = build_insert_query(GROUPME_TABLE, columns, values)
     cursor.execute(query, values)
 
 
@@ -131,10 +125,6 @@ def handle_generic_event(message, cursor):
 # @register_message_handler("generic_event")
 # def handle_generic_event(message, cursor):
 #     """Handle insertion of generic event messages."""
-#     query = f"""
-#         INSERT INTO {POSTGRES_TABLE} ("event_id", "event_name", "timestamp")
-#         VALUES (%s, %s, %s)
-#     """
 #     cursor.execute(
 #         query,
 #         (message.get("event_id"), message.get("event_name"), message.get("timestamp")),
@@ -149,5 +139,4 @@ def handle_generic_event(message, cursor):
 #         message.get("artist"),
 #         message.get("timestamp"),
 #     ]
-#     query = f"INSERT INTO rds_table ({', '.join(columns)}) VALUES ({', '.join(['%s'] * len(values))})"
 #     cursor.execute(query, values)
