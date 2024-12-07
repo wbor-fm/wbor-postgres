@@ -1,16 +1,24 @@
-def post_fork(server, worker):
+"""
+Handle Gunicorn worker post-fork initialization.
+"""
+
+import threading
+from consumers import PrimaryQueueConsumer, DeadLetterQueueConsumer
+from config import POSTGRES_QUEUE
+
+
+def post_fork(_server, _worker):
     """
     Define logic to kick off consumer threads in worker process.
     """
-    from app import PrimaryQueueConsumer, DeadLetterQueueConsumer
-    import threading
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info("Starting consumers in worker process.")
 
     # Initialize consumers
-    primary_consumer = PrimaryQueueConsumer(queue_name="postgres", routing_key="source.twilio.#")
+    
+    # Bind wildcard routing key to the primary queue
+    # Handle subrouting keys in the message handler
+    primary_consumer = PrimaryQueueConsumer(
+        queue_name=POSTGRES_QUEUE, routing_key="source.#"
+    )
     dead_letter_consumer = DeadLetterQueueConsumer()
 
     # Define consumer threads
@@ -27,8 +35,5 @@ def post_fork(server, worker):
     # Start consumers in separate threads
     primary_thread = threading.Thread(target=start_primary_consumer, daemon=True)
     dlq_thread = threading.Thread(target=start_dead_letter_consumer, daemon=True)
-
     primary_thread.start()
     dlq_thread.start()
-
-    logger.info("Consumer threads started.")
