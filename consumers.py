@@ -27,7 +27,7 @@ def callback(ch, method, properties, body):
     on the routing_key.
     """
     logger.debug(
-        "Callback triggered with routing key: %s",
+        "Callback triggered with routing key: `%s`",
         method.routing_key,
     )
 
@@ -40,17 +40,13 @@ def callback(ch, method, properties, body):
         message = json.loads(body)
         routing_key = method.routing_key.removeprefix("source.")
         logger.debug("Processing message: %s", message)
-        logger.debug("Stripped routing key: %s", routing_key)
-
-        # message_type = message.get("type")
-        # if not message_type:
-        #     raise ValueError("Message does not contain a 'type' field.")
+        logger.debug("Stripped routing key: `%s`", routing_key)
 
         # Depending on the routing key, perform different actions
         # Get the handler based on routing key
         handler = MESSAGE_HANDLERS.get(routing_key)
         if not handler:
-            raise ValueError(f"No handler registered for routing_key: {routing_key}")
+            raise ValueError(f"No handler registered for routing_key: `{routing_key}`")
 
         # Use the handler to process the message
         conn = get_db_connection()  # Open connection
@@ -58,7 +54,7 @@ def callback(ch, method, properties, body):
             handler(message, cursor)
             conn.commit()
             logger.info(
-                "Successfully processed message for routing key: %s", routing_key
+                "Successfully processed message for routing key: `%s`", routing_key
             )
 
         # Acknowledge the message

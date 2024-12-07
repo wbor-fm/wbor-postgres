@@ -12,7 +12,7 @@ logger = configure_logging(__name__)
 def retry_message(ch, method, body, retry_count):
     """Retry or send message to DLQ if retry limit is reached."""
     if retry_count < MAX_RETRIES:
-        logger.info("Retrying message. Retry count: %d", retry_count + 1)
+        logger.warning("Retrying message. Retry count: %d", retry_count + 1)
         ch.basic_publish(
             exchange="",
             routing_key=POSTGRES_QUEUE,

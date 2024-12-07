@@ -21,6 +21,13 @@ def register_message_handler(message_type):
     return decorator
 
 
+@register_message_handler("postgres")
+def handle_postgres_data(message, cursor):
+    """
+    Testing
+    """
+
+
 @register_message_handler("sms")
 def handle_twilio_sms(message, cursor):
     """
