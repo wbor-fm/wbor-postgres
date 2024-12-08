@@ -2,6 +2,7 @@
 Implement business logic for processing messages based on their type or purpose.
 """
 
+import json
 from utils.logging import configure_logging
 from database import build_insert_query, execute_query
 from config import MESSAGES_TABLE, GROUPME_TABLE
@@ -133,7 +134,15 @@ def handle_message_event(message, cursor):
     """
     logger.debug("Handling groupme.msg message: %s", message)
     # Prepare the columns and values to insert
-    columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"', '"picture_url"', '"source"']
+    columns = [
+        '"text"',
+        '"bot_id"',
+        '"code"',
+        '"type"',
+        '"uid"',
+        '"picture_url"',
+        '"source"',
+    ]
     values = [
         message.get("text"),
         message.get("bot_id"),
@@ -175,6 +184,47 @@ def handle_image_event(message, cursor):
         message.get("picture_url"),
         message.get("text"),
         message.get("source"),
+    ]
+
+    # Build and execute the SQL query
+    query, values = build_insert_query(GROUPME_TABLE, columns, values)
+    cursor.execute(query, values)
+
+
+@register_message_handler("groupme.callback")
+def handle_callback_event(message, cursor):
+    """
+    Handle insertion of callback logs from GroupMe.
+    """
+    logger.debug("Handling groupme.callback message: %s", message)
+    # Prepare the columns and values to insert
+    columns = [
+        '"attachments"',
+        '"avatar_url"',
+        '"created_at"',
+        '"group_id"',
+        '"id"',
+        '"name"',
+        '"sender_id"',
+        '"sender_type"',
+        '"source_guid"',
+        '"system"',
+        '"text"',
+        '"user_id"',
+    ]
+    values = [
+        json.dumps(message.get("attachments", [])),  # Convert list to JSON string
+        message.get("avatar_url"),
+        message.get("created_at"),
+        message.get("group_id"),
+        message.get("id"),  # Rename 'id' to 'message_id' for clarity
+        message.get("name"),
+        message.get("sender_id"),
+        message.get("sender_type"),
+        message.get("source_guid"),
+        message.get("system"),
+        message.get("text"),
+        message.get("user_id"),
     ]
 
     # Build and execute the SQL query
