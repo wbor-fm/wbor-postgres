@@ -29,7 +29,6 @@ logger = configure_logging(__name__)
 
 def terminate_process():
     """Terminate the process and propagate termination."""
-    logger.critical("Terminating process due to critical error.")
     os.kill(os.getpid(), signal.SIGTERM)
 
 

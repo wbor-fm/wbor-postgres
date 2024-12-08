@@ -9,7 +9,7 @@ from consumers import PrimaryQueueConsumer, DeadLetterQueueConsumer
 from config import POSTGRES_QUEUE
 
 
-def post_fork(_server, worker):
+def post_fork(_server, _worker):
     """
     Define logic to kick off consumer threads in worker process.
     """
@@ -23,8 +23,8 @@ def post_fork(_server, worker):
     )
     dead_letter_consumer = DeadLetterQueueConsumer()
 
-    def terminate_worker(exit_code=1):
-        """Terminate the Gunicorn worker and propagate termination."""
+    def terminate(exit_code=1):
+        """Terminate Gunicorn."""
         print("Terminating process due to critical error.")
         os.kill(os.getppid(), signal.SIGTERM)
         os._exit(exit_code)
@@ -37,7 +37,7 @@ def post_fork(_server, worker):
             primary_consumer.consume_messages()
         except (ConnectionError, RuntimeError) as e:
             print(f"Critical error in PrimaryQueueConsumer: {e}")
-            terminate_worker()
+            terminate()
 
     def start_dead_letter_consumer():
         try:
@@ -46,7 +46,7 @@ def post_fork(_server, worker):
             dead_letter_consumer.retry_messages()
         except (ConnectionError, RuntimeError) as e:
             print(f"Critical error in DeadLetterQueueConsumer: {e}")
-            terminate_worker()
+            terminate()
 
     # Start consumers in separate threads
     primary_thread = threading.Thread(target=start_primary_consumer, daemon=True)
