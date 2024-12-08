@@ -3,6 +3,7 @@ RabbitMQ consumers for the primary and dead-letter queues.
 """
 
 import json
+import sys
 import pika
 from psycopg.errors import DatabaseError
 from pika.exceptions import AMQPError, AMQPConnectionError, ChannelClosedByBroker
@@ -117,7 +118,7 @@ class RabbitMQBaseConsumer:
             logger.error("AMQP Connection Error: %s", error_message)
             if "ACCESS_REFUSED" in error_message:
                 logger.critical("Access refused. Please check RabbitMQ credentials.")
-            self.stop()
+            sys.exit(1)
 
     def setup_queues(self):
         """(Assert exchange and) declare queues/bindings."""
@@ -182,7 +183,7 @@ class RabbitMQBaseConsumer:
         )
 
     def stop(self):
-        """Gracefully stop consuming and close connections."""
+        """Attempt to gracefully stop consuming and close connections."""
         if self.channel and self.channel.is_open:
             self.channel.stop_consuming()
         if self.connection and self.connection.is_open:
