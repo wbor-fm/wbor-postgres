@@ -2,6 +2,7 @@
 Implement business logic for processing messages based on their type or purpose.
 """
 
+from datetime import datetime
 import json
 from utils.logging import configure_logging
 from database import build_insert_query, execute_query
@@ -197,6 +198,10 @@ def handle_callback_event(message, cursor):
     Handle insertion of callback logs from GroupMe.
     """
     logger.debug("Handling groupme.callback message: %s", message)
+
+    # Convert the Unix timestamp to a datetime object
+    created_at = datetime.fromtimestamp(message.get("created_at"))
+
     # Prepare the columns and values to insert
     columns = [
         '"attachments"',
@@ -215,7 +220,7 @@ def handle_callback_event(message, cursor):
     values = [
         json.dumps(message.get("attachments", [])),  # Convert list to JSON string
         message.get("avatar_url"),
-        message.get("created_at"),
+        created_at,
         message.get("group_id"),
         message.get("id"),  # Rename 'id' to 'message_id' for clarity
         message.get("name"),
