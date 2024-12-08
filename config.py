@@ -25,3 +25,4 @@ MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))
 
 MESSAGES_TABLE = os.getenv("MESSAGES_TABLE", "messages")
 GROUPME_TABLE = os.getenv("GROUPME_TABLE", "groupme")
+GROUPME_CALLBACK_TABLE = os.getenv("GROUPME_CALLBACK_TABLE", "groupme_callbacks")

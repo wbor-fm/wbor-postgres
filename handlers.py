@@ -5,7 +5,7 @@ Implement business logic for processing messages based on their type or purpose.
 import json
 from utils.logging import configure_logging
 from database import build_insert_query, execute_query
-from config import MESSAGES_TABLE, GROUPME_TABLE
+from config import MESSAGES_TABLE, GROUPME_TABLE, GROUPME_CALLBACK_TABLE
 
 logger = configure_logging(__name__)
 
@@ -187,7 +187,7 @@ def handle_image_event(message, cursor):
     ]
 
     # Build and execute the SQL query
-    query, values = build_insert_query(GROUPME_TABLE, columns, values)
+    query, values = build_insert_query(GROUPME_CALLBACK_TABLE, columns, values)
     cursor.execute(query, values)
 
 
