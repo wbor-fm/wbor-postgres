@@ -40,8 +40,7 @@ def callback(ch, method, properties, body):
     try:
         message = json.loads(body)
         routing_key = method.routing_key.removeprefix("source.")
-        logger.info("Processing message: %s", message)
-        logger.debug("Stripped routing key: `%s`", routing_key)
+        logger.info("Processing message (w/ key `%s`): %s", routing_key, message)
 
         # Depending on the routing key, perform different actions
         # Get the handler based on routing key

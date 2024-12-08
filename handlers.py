@@ -27,7 +27,29 @@ def handle_postgres_data(message, cursor):
     TODO: Not sure what to do here just yet.
 
     This handler exists so that the DLQ doesn't infinitely retry messages.
+
+    DLQ uses "postgres" as the message type due to default bindings.
     """
+
+
+# def add_to_contacts(message, cursor):
+#     """
+#     Add a new contact to the contacts table.
+
+#     This function is called by the handle_contact_event function.
+#     """
+#     columns = ['"phone_number"', '"contact_name"']
+#     values = [message.get("phone_number"), message.get("contact_name")]
+
+#     query, values = build_insert_query("contacts", columns, values)
+#     cursor.execute(query, values)
+
+
+# def handle_contact_event(message, cursor):
+#     """
+#     Handle the insertion of a new contact.
+#     """
+#     add_to_contacts(message, cursor)
 
 
 @register_message_handler("twilio.sms.incoming")
@@ -39,6 +61,7 @@ def handle_twilio_sms(message, cursor):
 
     TODO: outbound vs inbound messages
     """
+    logger.info("Handling twilio.sms.incoming message: %s", message)
     # Prepare additional columns and values for From(LocationType) if they exist
     location_columns = []
     location_values = []
@@ -108,6 +131,7 @@ def handle_message_event(message, cursor):
     """
     Handle insertion of text message logs from GroupMe.
     """
+    logger.info("Handling groupme.msg message: %s", message)
     # Prepare the columns and values to insert
     columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"']
     values = [
@@ -128,6 +152,7 @@ def handle_image_event(message, cursor):
     """
     Handle insertion of image message logs from GroupMe.
     """
+    logger.info("Handling groupme.img message: %s", message)
     # Prepare the columns and values to insert
     columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"', '"picture_url"']
     values = [
