@@ -30,7 +30,7 @@ def callback(ch, method, properties, body):
     logger.debug(
         "Callback triggered with routing key: `%s`",
         method.routing_key,
-    ) # TODO: how to make sure this isn't bound to receive messages from wbor-groupme's internal send queue
+    )  # TODO: how to make sure this isn't bound to receive messages from wbor-groupme's internal send queue
 
     retry_count = 0  # Safeguard against NoneType for headers
     if properties and properties.headers:
@@ -48,14 +48,15 @@ def callback(ch, method, properties, body):
         if not handler:
             logger.debug("No handler found for routing key: `%s`", routing_key)
 
-        # Use the handler to process the message
-        conn = get_db_connection()  # Open connection
-        with conn.cursor() as cursor:
-            handler(message, cursor)
-            conn.commit()
-            logger.info(
-                "Successfully processed message for routing key: `%s`", routing_key
-            )
+        if handler:
+            # Use the handler to process the message
+            conn = get_db_connection()  # Open connection
+            with conn.cursor() as cursor:
+                handler(message, cursor)
+                conn.commit()
+                logger.info(
+                    "Successfully processed message for routing key: `%s`", routing_key
+                )
 
         # Acknowledge the message
         ch.basic_ack(delivery_tag=method.delivery_tag)
