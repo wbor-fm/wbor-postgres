@@ -15,6 +15,7 @@ RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "source_exchange")
 RABBITMQ_DL_EXCHANGE = os.getenv("RABBITMQ_DL_EXCHANGE", "dead_letter_exchange")
+RABBITMQ_DL_QUEUE = os.getenv("RABBITMQ_DL_QUEUE", "dead_letter_queue")
 POSTGRES_QUEUE = os.getenv("POSTGRES_QUEUE", "postgres")
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "wbor-postgres")

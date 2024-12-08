@@ -5,23 +5,40 @@ Connection management (get_db_connection).
 Low-level database operations (execute_query).
 """
 
+from typing import Generator
+from contextlib import contextmanager
 import psycopg
+from psycopg.connection import Connection
 from config import POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 from utils.logging import configure_logging
 
 logger = configure_logging(__name__)
 
 
-def get_db_connection():
+@contextmanager
+def get_db_connection() -> Generator[Connection, None, None]:
     """
-    Establish a connection to the Postgres database.
+    Establish a connection to the Postgres database and ensure cleanup.
+
+    Yields:
+        Connection: A psycopg Connection object.
     """
-    return psycopg.connect(
-        host=POSTGRES_HOST,
-        dbname=POSTGRES_DB,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-    )
+    connection = None
+    try:
+        connection = psycopg.connect(
+            host=POSTGRES_HOST,
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+        )
+        yield connection
+    except Exception as e:
+        logger.error("Error establishing database connection: %s", e)
+        raise
+    finally:
+        if connection and not connection.closed:
+            connection.close()
+            logger.debug("Database connection closed.")
 
 
 def build_insert_query(table_name, columns, values):

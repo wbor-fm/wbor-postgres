@@ -3,9 +3,9 @@ RabbitMQ consumers for the primary and dead-letter queues.
 """
 
 import json
-import psycopg
 import pika
-import pika.exceptions
+from psycopg.errors import DatabaseError
+from pika.exceptions import AMQPError, AMQPConnectionError, ChannelClosedByBroker
 from utils.logging import configure_logging
 from retry import retry_message
 from database import get_db_connection
@@ -16,10 +16,59 @@ from config import (
     RABBITMQ_HOST,
     RABBITMQ_EXCHANGE,
     RABBITMQ_DL_EXCHANGE,
+    RABBITMQ_DL_QUEUE,
     POSTGRES_QUEUE,
+    MAX_RETRIES,
 )
 
 logger = configure_logging(__name__)
+
+
+def handle_errors(callback_function):
+    """
+    Decorator to handle errors in the callback function.
+    """
+
+    def wrapper(ch, method, properties, body):
+        # Safeguard against NoneType for headers
+        retry_count = properties.headers.get("x-retry-count", 0) if properties else 0
+        try:
+            callback_function(ch, method, properties, body)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        except (
+            DatabaseError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            logger.error("Error processing message: %s", error)
+            if retry_count < MAX_RETRIES:
+                retry_message(ch, method, body, retry_count + 1)
+            else:
+                logger.error("Max retries exceeded. Discarding: %s", body)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    return wrapper
+
+
+@handle_errors
+def process_message(_ch, method, _properties, body):
+    """
+    Core message processing logic.
+    """
+    message = json.loads(body)
+    routing_key = method.routing_key.removeprefix("source.")
+    logger.info("Processing message (w/ key `%s`): %s", routing_key, message)
+
+    # Depending on the routing key, perform different actions
+    handler = MESSAGE_HANDLERS.get(routing_key)
+    if not handler:
+        logger.info("No handler found for routing key: `%s`", routing_key)
+        return
+
+    with get_db_connection() as conn, conn.cursor() as cursor:
+        handler(message, cursor)
+        conn.commit()
+        logger.info("Successfully processed message for routing key: `%s`", routing_key)
 
 
 def callback(ch, method, properties, body):
@@ -31,42 +80,7 @@ def callback(ch, method, properties, body):
         "Callback triggered with routing key: `%s`",
         method.routing_key,
     )  # TODO: how to make sure this isn't bound to receive messages from wbor-groupme's internal send queue
-
-    retry_count = 0  # Safeguard against NoneType for headers
-    if properties and properties.headers:
-        retry_count = properties.headers.get("x-retry-count", 0)
-
-    conn = None
-    try:
-        message = json.loads(body)
-        routing_key = method.routing_key.removeprefix("source.")
-        logger.info("Processing message (w/ key `%s`): %s", routing_key, message)
-
-        # Depending on the routing key, perform different actions
-        # Get the handler based on routing key
-        handler = MESSAGE_HANDLERS.get(routing_key)
-        if not handler:
-            logger.info("No handler found for routing key: `%s`", routing_key)
-
-        if handler:
-            # Use the handler to process the message
-            conn = get_db_connection()  # Open connection
-            with conn.cursor() as cursor:
-                handler(message, cursor)
-                conn.commit()
-                logger.info(
-                    "Successfully processed message for routing key: `%s`", routing_key
-                )
-
-        # Acknowledge the message
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except (psycopg.errors.DatabaseError, ValueError, json.JSONDecodeError) as error:
-        logger.error("Error processing message: %s", error)
-        retry_message(ch, method, body, retry_count)
-    finally:
-        if conn and not conn.closed:
-            conn.close()
-            logger.debug("Database connection closed.")
+    process_message(ch, method, properties, body)
 
 
 class RabbitMQBaseConsumer:
@@ -80,16 +94,15 @@ class RabbitMQBaseConsumer:
     """
 
     def __init__(self, queue_name, routing_key, exchange=RABBITMQ_EXCHANGE):
-        self.connection = None
-        self.channel = None
         self.queue_name = queue_name
         self.routing_key = routing_key
         self.exchange = exchange
+        self.connection = None
+        self.channel = None
 
     def connect(self):
         """Establish connection and channel to RabbitMQ."""
         logger.debug("Connecting to RabbitMQ...")
-
         try:
             credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
             parameters = pika.ConnectionParameters(
@@ -99,12 +112,62 @@ class RabbitMQBaseConsumer:
             )
             self.connection = pika.BlockingConnection(parameters)
             self.channel = self.connection.channel()
-        except pika.exceptions.AMQPConnectionError as conn_error:
+        except AMQPConnectionError as conn_error:
             error_message = str(conn_error)
             logger.error("AMQP Connection Error: %s", error_message)
             if "ACCESS_REFUSED" in error_message:
                 logger.critical("Access refused. Please check RabbitMQ credentials.")
-                self.stop()
+            self.stop()
+
+    def setup_queues(self):
+        """(Assert exchange and) declare queues/bindings."""
+        self.assert_exchange()
+
+        # Declare dead-letter queue and bind to exchange
+        try:
+            self.channel.queue_declare(
+                queue=RABBITMQ_DL_QUEUE,
+                durable=True,
+                arguments={
+                    "x-message-ttl": 60000,
+                    "x-dead-letter-exchange": RABBITMQ_DL_EXCHANGE,
+                },
+            )
+            self.channel.queue_bind(
+                exchange=RABBITMQ_DL_EXCHANGE, queue=RABBITMQ_DL_QUEUE
+            )
+
+            # Declare primary queue and bind to exchange (e.g. "postgres")
+            self.channel.queue_declare(
+                queue=self.queue_name,
+                durable=True,
+                arguments={
+                    "x-message-ttl": 60000,
+                    "x-dead-letter-exchange": RABBITMQ_DL_EXCHANGE,
+                },
+            )
+            self.channel.queue_bind(
+                # Bind this queue to the exchange with the routing key, meaning
+                # that messages with this routing key will be sent to this queue
+                exchange=self.exchange,
+                queue=self.queue_name,
+                routing_key=self.routing_key,
+            )
+        except ChannelClosedByBroker as e:
+            if "inequivalent arg" in str(e):
+                # If the queue already exists with different attributes, log and terminate
+                logger.warning(
+                    "Queue already exists with different attributes. "
+                    "Skipping redeclaration."
+                )
+                # Close connection
+                if self.connection and not self.connection.is_closed:
+                    self.connection.close()
+                raise RuntimeError(
+                    "Queue already exists with mismatched attributes. "
+                    "Please resolve this conflict before restarting the application."
+                ) from e
+            raise
 
     def assert_exchange(self):
         """Assert the exchange for the consumer."""
@@ -116,61 +179,6 @@ class RabbitMQBaseConsumer:
         )
         self.channel.exchange_declare(
             exchange=RABBITMQ_DL_EXCHANGE, exchange_type="direct", durable=True
-        )
-
-    def setup_queues(self):
-        """(Assert exchange and) declare queues."""
-        try:
-            self.assert_exchange()
-        except RuntimeError as e:
-            logger.error("Error asserting exchange: %s", e)
-            self.stop()
-
-        # Declare dead-letter queue and bind to exchange
-        try:
-            self.channel.queue_declare(
-                queue="dead_letter_queue",
-                durable=True,
-                arguments={
-                    "x-message-ttl": 60000,
-                    "x-dead-letter-exchange": RABBITMQ_DL_EXCHANGE,
-                },
-            )
-        except pika.exceptions.ChannelClosedByBroker as e:
-            if "inequivalent arg" in str(e):
-                # If the queue already exists with different attributes, log and terminate
-                logger.warning(
-                    "Queue '%s' already exists with different attributes."
-                    "Skipping redeclaration.",
-                    RABBITMQ_DL_EXCHANGE,
-                )
-                # Close connection
-                if self.connection and not self.connection.is_closed:
-                    self.connection.close()
-                raise RuntimeError(
-                    f"Queue '{RABBITMQ_DL_EXCHANGE}' already exists with mismatched attributes. "
-                    "Please resolve this conflict before restarting the application."
-                ) from e
-            raise
-        self.channel.queue_bind(
-            exchange=RABBITMQ_DL_EXCHANGE, queue="dead_letter_queue"
-        )
-
-        # Declare primary queue and bind to exchange (e.g. "postgres")
-        self.channel.queue_declare(
-            queue=self.queue_name,
-            durable=True,
-            arguments={
-                "x-message-ttl": 60000,
-                "x-dead-letter-exchange": RABBITMQ_DL_EXCHANGE,
-            },
-        )
-        self.channel.queue_bind(
-            # Bind this queue to the exchange with the routing key, meaning
-            # that messages with this routing key will be sent to this queue
-            exchange=self.exchange,
-            queue=self.queue_name,
-            routing_key=self.routing_key,
         )
 
     def stop(self):
@@ -203,16 +211,6 @@ class PrimaryQueueConsumer(RabbitMQBaseConsumer):
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping...")
             self.stop()
-        except pika.exceptions.AMQPConnectionError as conn_error:
-            error_message = str(conn_error)
-            logger.error("AMQP Connection Error: %s", error_message)
-            if "CONNECTION_FORCED" in error_message and "shutdown" in error_message:
-                logger.critical(
-                    "Connection forced shutdown. Please check RabbitMQ server status."
-                )
-            if "ACCESS_REFUSED" in error_message:
-                logger.critical("Access refused. Please check RabbitMQ credentials.")
-            self.stop()
 
 
 # Dead-letter queue consumer class
@@ -220,20 +218,24 @@ class DeadLetterQueueConsumer(RabbitMQBaseConsumer):
     """Consumer for the dead-letter queue."""
 
     def __init__(self):
-        super().__init__(queue_name="dead_letter_queue", routing_key="")
+        super().__init__(queue_name=RABBITMQ_DL_QUEUE, routing_key="")
 
     def retry_messages(self):
-        """Consume messages from the dead-letter queue and retry them."""
+        """Retry messages from the dead-letter queue."""
 
         def retry_callback(ch, method, _properties, body):
-            logger.info("Retrying message from dead-letter queue.")
-            # exchange="" signifies that the message is being published directly to a
-            # queue rather than being routed through an exchange
+            try:
+                logger.info("Retrying message from dead-letter queue.")
+                # exchange="" signifies that the message is being published directly to a
+                # queue rather than being routed through an exchange
 
-            # means that if you specify exchange="" and provide a routing_key equal to the
-            # name of a queue, the message is directly delivered to that queue.
-            ch.basic_publish(exchange="", routing_key=POSTGRES_QUEUE, body=body)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+                # means that if you specify exchange="" and provide a routing_key equal to the
+                # name of a queue, the message is directly delivered to that queue.
+                ch.basic_publish(exchange="", routing_key=POSTGRES_QUEUE, body=body)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+            except (AMQPError, DatabaseError) as e:
+                logger.error("Error retrying message: %s", e)
+                ch.basic_nack(delivery_tag=method.delivery_tag)
 
         self.channel.basic_consume(
             queue=self.queue_name, on_message_callback=retry_callback, auto_ack=False
@@ -243,14 +245,4 @@ class DeadLetterQueueConsumer(RabbitMQBaseConsumer):
             self.channel.start_consuming()
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping...")
-            self.stop()
-        except pika.exceptions.AMQPConnectionError as conn_error:
-            error_message = str(conn_error)
-            logger.error("AMQP Connection Error: %s", error_message)
-            if "CONNECTION_FORCED" in error_message and "shutdown" in error_message:
-                logger.critical(
-                    "Connection forced shutdown. Please check RabbitMQ server status."
-                )
-            if "ACCESS_REFUSED" in error_message:
-                logger.critical("Access refused. Please check RabbitMQ credentials.")
             self.stop()
