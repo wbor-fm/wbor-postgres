@@ -111,7 +111,7 @@ class RabbitMQBaseConsumer:
 
     def connect(self):
         """Establish connection and channel to RabbitMQ."""
-        logger.debug("Connecting to RabbitMQ...")
+        logger.debug("Connecting `%s` to RabbitMQ...", self.queue_name)
         try:
             credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
             parameters = pika.ConnectionParameters(
@@ -123,7 +123,9 @@ class RabbitMQBaseConsumer:
             self.channel = self.connection.channel()
         except AMQPConnectionError as conn_error:
             error_message = str(conn_error)
-            logger.error("AMQP Connection Error: %s", error_message)
+            logger.error(
+                "`%s` AMQP Connection Error: %s", self.queue_name, error_message
+            )
             if "ACCESS_REFUSED" in error_message:
                 logger.critical("Access refused. Please check RabbitMQ credentials.")
             terminate_process()
