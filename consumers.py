@@ -30,7 +30,7 @@ def callback(ch, method, properties, body):
     logger.debug(
         "Callback triggered with routing key: `%s`",
         method.routing_key,
-    )
+    ) # TODO: how to make sure this isn't bound to receive messages from wbor-groupme's internal send queue
 
     retry_count = 0  # Safeguard against NoneType for headers
     if properties and properties.headers:
@@ -46,7 +46,7 @@ def callback(ch, method, properties, body):
         # Get the handler based on routing key
         handler = MESSAGE_HANDLERS.get(routing_key)
         if not handler:
-            raise ValueError(f"No handler registered for routing_key: `{routing_key}`")
+            logger.debug("No handler found for routing key: `%s`", routing_key)
 
         # Use the handler to process the message
         conn = get_db_connection()  # Open connection
