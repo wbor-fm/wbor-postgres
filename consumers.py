@@ -46,7 +46,7 @@ def callback(ch, method, properties, body):
         # Get the handler based on routing key
         handler = MESSAGE_HANDLERS.get(routing_key)
         if not handler:
-            logger.debug("No handler found for routing key: `%s`", routing_key)
+            logger.info("No handler found for routing key: `%s`", routing_key)
 
         if handler:
             # Use the handler to process the message

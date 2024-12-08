@@ -133,13 +133,14 @@ def handle_message_event(message, cursor):
     """
     logger.debug("Handling groupme.msg message: %s", message)
     # Prepare the columns and values to insert
-    columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"']
+    columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"', '"picture_url"']
     values = [
         message.get("text"),
         message.get("bot_id"),
         message.get("code"),
         message.get("type"),
         message.get("uid"),
+        message.get("picture_url"),
     ]
 
     # Build and execute the SQL query
