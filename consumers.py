@@ -99,11 +99,18 @@ class RabbitMQBaseConsumer:
             )
             self.connection = pika.BlockingConnection(parameters)
             self.channel = self.connection.channel()
-        except pika.exceptions.AMQPConnectionError as amqp_error:
-            logger.error("AMQP Connection Error: %s", amqp_error)
+        except pika.exceptions.AMQPConnectionError as conn_error:
+            error_message = str(conn_error)
+            logger.error("AMQP Connection Error: %s", error_message)
+            if "ACCESS_REFUSED" in error_message:
+                logger.critical("Access refused. Please check RabbitMQ credentials.")
+                self.stop()
 
     def assert_exchange(self):
         """Assert the exchange for the consumer."""
+        if not self.channel:
+            raise RuntimeError("Channel not initialized. Cannot assert exchange.")
+
         self.channel.exchange_declare(
             exchange=self.exchange, exchange_type="topic", durable=True
         )
@@ -192,8 +199,15 @@ class PrimaryQueueConsumer(RabbitMQBaseConsumer):
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping...")
             self.stop()
-        except pika.exceptions.AMQPConnectionError as amqp_error:
-            logger.error("AMQP Connection Error: %s", amqp_error)
+        except pika.exceptions.AMQPConnectionError as conn_error:
+            error_message = str(conn_error)
+            logger.error("AMQP Connection Error: %s", error_message)
+            if "CONNECTION_FORCED" in error_message and "shutdown" in error_message:
+                logger.critical(
+                    "Connection forced shutdown. Please check RabbitMQ server status."
+                )
+            if "ACCESS_REFUSED" in error_message:
+                logger.critical("Access refused. Please check RabbitMQ credentials.")
             self.stop()
 
 
@@ -225,4 +239,14 @@ class DeadLetterQueueConsumer(RabbitMQBaseConsumer):
             self.channel.start_consuming()
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping...")
+            self.stop()
+        except pika.exceptions.AMQPConnectionError as conn_error:
+            error_message = str(conn_error)
+            logger.error("AMQP Connection Error: %s", error_message)
+            if "CONNECTION_FORCED" in error_message and "shutdown" in error_message:
+                logger.critical(
+                    "Connection forced shutdown. Please check RabbitMQ server status."
+                )
+            if "ACCESS_REFUSED" in error_message:
+                logger.critical("Access refused. Please check RabbitMQ credentials.")
             self.stop()
