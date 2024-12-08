@@ -23,11 +23,12 @@ def post_fork(_server, worker):
     )
     dead_letter_consumer = DeadLetterQueueConsumer()
 
-    def terminate_worker():
+    def terminate_worker(exit_code=1):
         """Terminate the Gunicorn worker and propagate termination."""
         print("Terminating worker due to critical error.")
         # Send SIGTERM to the current worker process
         os.kill(worker.pid, signal.SIGTERM)
+        os._exit(exit_code)
 
     # Define consumer threads
     def start_primary_consumer():

@@ -4,6 +4,8 @@ RabbitMQ consumers for the primary and dead-letter queues.
 
 import json
 import sys
+import os
+import signal
 import pika
 from psycopg.errors import DatabaseError
 from pika.exceptions import AMQPError, AMQPConnectionError, ChannelClosedByBroker
@@ -23,6 +25,12 @@ from config import (
 )
 
 logger = configure_logging(__name__)
+
+
+def terminate_process():
+    """Terminate the process and propagate termination."""
+    logger.critical("Terminating process due to critical error.")
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 def handle_errors(callback_function):
@@ -118,7 +126,7 @@ class RabbitMQBaseConsumer:
             logger.error("AMQP Connection Error: %s", error_message)
             if "ACCESS_REFUSED" in error_message:
                 logger.critical("Access refused. Please check RabbitMQ credentials.")
-            sys.exit(1)
+            terminate_process()
 
     def setup_queues(self):
         """(Assert exchange and) declare queues/bindings."""
@@ -209,6 +217,9 @@ class PrimaryQueueConsumer(RabbitMQBaseConsumer):
         logger.info("Primary queue consumer ready to consume messages.")
         try:
             self.channel.start_consuming()
+        except (AMQPError, DatabaseError) as e:
+            logger.critical("Error consuming messages: %s", e)
+            terminate_process()
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping...")
             self.stop()
@@ -244,6 +255,9 @@ class DeadLetterQueueConsumer(RabbitMQBaseConsumer):
         logger.info("Dead-letter queue consumer ready to retry messages.")
         try:
             self.channel.start_consuming()
+        except (AMQPError, DatabaseError) as e:
+            logger.critical("Error retrying messages: %s", e)
+            terminate_process()
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping...")
             self.stop()
