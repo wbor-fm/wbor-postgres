@@ -155,7 +155,15 @@ def handle_image_event(message, cursor):
     """
     logger.debug("Handling groupme.img message: %s", message)
     # Prepare the columns and values to insert
-    columns = ['"raw_img"', '"bot_id"', '"code"', '"type"', '"uid"', '"picture_url"']
+    columns = [
+        '"raw_img"',
+        '"bot_id"',
+        '"code"',
+        '"type"',
+        '"uid"',
+        '"picture_url"',
+        '"text"',
+    ]
     values = [
         message.get("raw_img"),  # Unlikely to be used based on current implementation
         message.get("bot_id"),
@@ -163,6 +171,7 @@ def handle_image_event(message, cursor):
         message.get("type"),
         message.get("uid"),
         message.get("picture_url"),
+        message.get("text"),
     ]
 
     # Build and execute the SQL query
