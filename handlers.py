@@ -187,7 +187,7 @@ def handle_image_event(message, cursor):
     ]
 
     # Build and execute the SQL query
-    query, values = build_insert_query(GROUPME_CALLBACK_TABLE, columns, values)
+    query, values = build_insert_query(GROUPME_TABLE, columns, values)
     cursor.execute(query, values)
 
 
@@ -228,7 +228,7 @@ def handle_callback_event(message, cursor):
     ]
 
     # Build and execute the SQL query
-    query, values = build_insert_query(GROUPME_TABLE, columns, values)
+    query, values = build_insert_query(GROUPME_CALLBACK_TABLE, columns, values)
     cursor.execute(query, values)
 
 
