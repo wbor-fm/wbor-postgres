@@ -61,7 +61,7 @@ def handle_twilio_sms(message, cursor):
 
     TODO: outbound vs inbound messages
     """
-    logger.info("Handling twilio.sms.incoming message: %s", message)
+    logger.debug("Handling twilio.sms.incoming message: %s", message)
     # Prepare additional columns and values for From(LocationType) if they exist
     location_columns = []
     location_values = []
@@ -131,7 +131,7 @@ def handle_message_event(message, cursor):
     """
     Handle insertion of text message logs from GroupMe.
     """
-    logger.info("Handling groupme.msg message: %s", message)
+    logger.debug("Handling groupme.msg message: %s", message)
     # Prepare the columns and values to insert
     columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"']
     values = [
@@ -152,7 +152,7 @@ def handle_image_event(message, cursor):
     """
     Handle insertion of image message logs from GroupMe.
     """
-    logger.info("Handling groupme.img message: %s", message)
+    logger.debug("Handling groupme.img message: %s", message)
     # Prepare the columns and values to insert
     columns = ['"text"', '"bot_id"', '"code"', '"type"', '"uid"', '"picture_url"']
     values = [
