@@ -120,7 +120,11 @@ class RabbitMQBaseConsumer:
 
     def setup_queues(self):
         """(Assert exchange and) declare queues."""
-        self.assert_exchange()
+        try:
+            self.assert_exchange()
+        except RuntimeError as e:
+            logger.error("Error asserting exchange: %s", e)
+            self.stop()
 
         # Declare dead-letter queue and bind to exchange
         try:
