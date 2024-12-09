@@ -55,7 +55,7 @@ def message_handler(callback_function):
                 retry_message(ch, method, body, retry_count)
             else:
                 logger.error("Max retries exceeded. Discarding: %s", body)
-                ch.basic_ack(delivery_tag=method.delivery_tag)
+                retry_message(ch, method, body, retry_count)
 
     return wrapper
 
