@@ -1,5 +1,5 @@
 """
-Handle Gunicorn worker post-fork initialization.
+App launch configuration for Gunicorn.
 """
 
 import threading
@@ -43,7 +43,7 @@ def post_fork(_server, _worker):
         try:
             dead_letter_consumer.connect()
             dead_letter_consumer.setup_queues()
-            dead_letter_consumer.retry_messages()
+            dead_letter_consumer.handle_dlq_message()
         except (ConnectionError, RuntimeError) as e:
             print(f"Critical error in DeadLetterQueueConsumer: {e}")
             terminate()
