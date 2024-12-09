@@ -6,7 +6,12 @@ from datetime import datetime
 import json
 from utils.logging import configure_logging
 from database import build_insert_query, execute_query
-from config import MESSAGES_TABLE, GROUPME_TABLE, GROUPME_CALLBACK_TABLE
+from config import (
+    MESSAGES_TABLE,
+    GROUPME_TABLE,
+    GROUPME_CALLBACK_TABLE,
+    SENT_MESSAGES_TABLE,
+)
 
 logger = configure_logging(__name__)
 
@@ -129,11 +134,29 @@ def handle_twilio_sms(message, cursor):
 
 
 @register_message_handler("twilio.sms.outgoing")
-def handle_outgoing_twilio_sms(message, _cursor):
+def handle_outgoing_twilio_sms(message, cursor):
     """
-    TEMP
+    Log outgoing Twilio SMS messages (sent by MGMT).
     """
     logger.debug("Handling twilio.sms.outgoing message: %s", message)
+
+    timestamp = datetime.fromtimestamp(message.get("timestamp"))
+
+    columns = [
+        '"wbor_message_id"',
+        '"recipient_number"',
+        '"message"',
+        '"timestamp"',
+    ]
+    values = [
+        message.get("wbor_message_id"),
+        message.get("recipient_number"),
+        message.get("message"),
+        timestamp,
+    ]
+
+    query, values = build_insert_query(SENT_MESSAGES_TABLE, columns, values)
+    execute_query(cursor, query, values)
 
 
 @register_message_handler("groupme.msg")
