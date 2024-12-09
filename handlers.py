@@ -31,13 +31,9 @@ def register_message_handler(message_type):
 @register_message_handler("postgres")
 def handle_postgres_data(_message, _cursor):
     """
-    TODO: Not sure what to do here just yet.
-
-    This handler exists so that the DLQ doesn't infinitely retry messages.
-
-    DLQ uses "postgres" as the message type due to default bindings.
+    ????
     """
-    logger.warning("Received message with type 'postgres'. No handler implemented.")
+    logger.critical("Received message with type 'postgres'. No handler implemented.")
 
 
 # def add_to_contacts(message, cursor):
@@ -66,8 +62,6 @@ def handle_twilio_sms(message, cursor):
     Handle insertion of incoming Twilio SMS messages.
 
     Calls database.execute_query with the appropriate query and values.
-
-    TODO: outbound vs inbound messages
     """
     logger.debug("Handling twilio.sms.incoming message: %s", message)
     # Prepare additional columns and values for From(LocationType) if they exist
@@ -158,6 +152,22 @@ def handle_outgoing_twilio_sms(message, cursor):
 
     query, values = build_insert_query(SENT_MESSAGES_TABLE, columns, values)
     execute_query(cursor, query, values)
+
+
+@register_message_handler("twilio.voice-intelligence")
+def handle_twilio_voice_intelligence(message, cursor):
+    """
+    Log Twilio Voice Intelligence messages.
+    """
+    logger.debug("Handling twilio.voice-intelligence message: %s", message)
+
+
+@register_message_handler("twilio.call-events")
+def handle_twilio_call_events(message, cursor):
+    """
+    Log Twilio call event messages.
+    """
+    logger.debug("Handling twilio.call-events message: %s", message)
 
 
 @register_message_handler("groupme.msg")

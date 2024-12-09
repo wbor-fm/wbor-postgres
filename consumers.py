@@ -102,7 +102,7 @@ def callback(ch, method, properties, body):
     logger.debug(
         "Callback triggered with routing key: `%s`",
         method.routing_key,
-    )  # TODO: how to make sure this isn't bound to receive messages from wbor-groupme's internal send queue
+    )
     process_message(ch, method, properties, body)
 
 
