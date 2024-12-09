@@ -193,7 +193,7 @@ def handle_message_event(message, cursor):
     values = [
         message.get("text"),
         message.get("bot_id"),
-        message.get("code"),
+        message.get("statuscode"),
         message.get("type"),
         message.get("wbor_message_id"),
         message.get("picture_url"),
@@ -225,7 +225,7 @@ def handle_image_event(message, cursor):
     values = [
         message.get("raw_img"),  # Unlikely to be used based on current implementation
         message.get("bot_id"),
-        message.get("code"),
+        message.get("statuscode"),
         message.get("type"),
         message.get("wbor_message_id"),
         message.get("picture_url"),
