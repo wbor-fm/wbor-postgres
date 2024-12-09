@@ -67,7 +67,12 @@ def process_message(_ch, method, _properties, body):
     """
     message = json.loads(body)
     routing_key = method.routing_key.removeprefix("source.")
-    logger.info("Processing message (w/ key `%s`): %s", routing_key, message)
+    logger.info(
+        "PrimaryQueueConsumer - Processing message (w/ key `%s`): %s - %s",
+        routing_key,
+        message.get("wbor_message_id"),
+        message,
+    )
 
     # Depending on the routing key, perform different actions
     handler = MESSAGE_HANDLERS.get(routing_key)
@@ -79,7 +84,11 @@ def process_message(_ch, method, _properties, body):
     with get_db_connection() as conn, conn.cursor() as cursor:
         handler(message, cursor)
         conn.commit()
-        logger.info("Successfully processed message for routing key: `%s`", routing_key)
+        logger.info(
+            "PrimaryQueueConsumer - Successfully processed message for routing key `%s`: %s",
+            routing_key,
+            message.get("wbor_message_id"),
+        )
 
 
 def callback(ch, method, properties, body):
@@ -223,7 +232,7 @@ class PrimaryQueueConsumer(RabbitMQBaseConsumer):
             queue=POSTGRES_QUEUE, on_message_callback=callback, auto_ack=False
         )
         # callback -> process_message (wrapped by decorator) -> handler -> database
-        logger.debug("Primary queue consumer ready to consume messages.")
+        logger.info("Primary queue consumer ready to consume messages.")
         try:
             self.channel.start_consuming()
             logger.debug("Consuming messages...")
