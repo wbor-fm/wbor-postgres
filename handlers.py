@@ -158,6 +158,8 @@ def handle_outgoing_twilio_sms(message, cursor):
 def handle_twilio_voice_intelligence(message, cursor):
     """
     Log Twilio Voice Intelligence messages.
+
+    TODO: store transcripts?
     """
     logger.debug("Handling twilio.voice-intelligence message: %s", message)
 
@@ -166,6 +168,8 @@ def handle_twilio_voice_intelligence(message, cursor):
 def handle_twilio_call_events(message, cursor):
     """
     Log Twilio call event messages.
+
+    TODO: store audio file?
     """
     logger.debug("Handling twilio.call-events message: %s", message)
 
@@ -182,7 +186,7 @@ def handle_message_event(message, cursor):
         '"bot_id"',
         '"code"',
         '"type"',
-        '"uid"',
+        '"wbor_message_id"',
         '"picture_url"',
         '"source"',
     ]
@@ -191,7 +195,7 @@ def handle_message_event(message, cursor):
         message.get("bot_id"),
         message.get("code"),
         message.get("type"),
-        message.get("uid"),
+        message.get("wbor_message_id"),
         message.get("picture_url"),
         message.get("source"),
     ]
@@ -213,7 +217,7 @@ def handle_image_event(message, cursor):
         '"bot_id"',
         '"code"',
         '"type"',
-        '"uid"',
+        '"wbor_message_id"',
         '"picture_url"',
         '"text"',
         '"source"',
@@ -223,7 +227,7 @@ def handle_image_event(message, cursor):
         message.get("bot_id"),
         message.get("code"),
         message.get("type"),
-        message.get("uid"),
+        message.get("wbor_message_id"),
         message.get("picture_url"),
         message.get("text"),
         message.get("source"),
