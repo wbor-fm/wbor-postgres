@@ -140,7 +140,8 @@ def handle_outgoing_twilio_sms(message, cursor):
     """
     logger.debug("Handling twilio.sms.outgoing message: %s", message)
 
-    timestamp = datetime.fromtimestamp(message.get("timestamp"))
+    timestamp_str = message.get("timestamp")
+    timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
 
     columns = [
         '"wbor_message_id"',
