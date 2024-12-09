@@ -14,6 +14,7 @@ def post_fork(_server, _worker):
     Define logic to kick off consumer threads in worker process.
     """
     # TODO: use different PIDs for each queue consumer
+    # TODO: I think there are also duplicate PrimaryQueueConsumer instances
 
     # Initialize consumers
 
