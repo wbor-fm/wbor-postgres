@@ -24,7 +24,7 @@ def register_message_handler(message_type):
 
 
 @register_message_handler("postgres")
-def handle_postgres_data(message, cursor):
+def handle_postgres_data(_message, _cursor):
     """
     TODO: Not sure what to do here just yet.
 
@@ -32,6 +32,7 @@ def handle_postgres_data(message, cursor):
 
     DLQ uses "postgres" as the message type due to default bindings.
     """
+    logger.warning("Received message with type 'postgres'. No handler implemented.")
 
 
 # def add_to_contacts(message, cursor):
@@ -123,9 +124,16 @@ def handle_twilio_sms(message, cursor):
         + media_values
     )
 
-    # Build the query with dynamic columns
     query, values = build_insert_query(MESSAGES_TABLE, columns, values)
     execute_query(cursor, query, values)
+
+
+@register_message_handler("twilio.sms.outgoing")
+def handle_outgoing_twilio_sms(message, _cursor):
+    """
+    TEMP
+    """
+    logger.debug("Handling twilio.sms.outgoing message: %s", message)
 
 
 @register_message_handler("groupme.msg")
@@ -187,7 +195,6 @@ def handle_image_event(message, cursor):
         message.get("source"),
     ]
 
-    # Build and execute the SQL query
     query, values = build_insert_query(GROUPME_TABLE, columns, values)
     cursor.execute(query, values)
 
@@ -232,7 +239,6 @@ def handle_callback_event(message, cursor):
         message.get("user_id"),
     ]
 
-    # Build and execute the SQL query
     query, values = build_insert_query(GROUPME_CALLBACK_TABLE, columns, values)
     cursor.execute(query, values)
 

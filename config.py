@@ -26,6 +26,8 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "wbor-postgres")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+
+# Table names
 MESSAGES_TABLE = os.getenv("MESSAGES_TABLE", "messages")
 GROUPME_TABLE = os.getenv("GROUPME_TABLE", "groupme")
 GROUPME_CALLBACK_TABLE = os.getenv("GROUPME_CALLBACK_TABLE", "groupme_callbacks")

@@ -31,9 +31,9 @@ def terminate_process():
     os.kill(os.getpid(), signal.SIGTERM)
 
 
-def handle_errors(callback_function):
+def message_handler(callback_function):
     """
-    Decorator to handle errors in the callback function.
+    Decorator to handle errors and ack in the callback function.
 
     Wrapper handles incrementing the retry count.
     """
@@ -51,7 +51,7 @@ def handle_errors(callback_function):
             json.JSONDecodeError,
         ) as error:
             logger.error("Error processing message: %s", error)
-            if retry_count < MAX_RETRIES:  # Local retries
+            if retry_count < MAX_RETRIES:
                 retry_message(ch, method, body, retry_count)
             else:
                 logger.error("Max retries exceeded. Discarding: %s", body)
@@ -60,7 +60,7 @@ def handle_errors(callback_function):
     return wrapper
 
 
-@handle_errors
+@message_handler
 def process_message(_ch, method, _properties, body):
     """
     Core message processing logic.
@@ -75,10 +75,13 @@ def process_message(_ch, method, _properties, body):
     )
 
     # Depending on the routing key, perform different actions
+    # TODO: wildcard matching? e.g. a handler that can handle all "twilio.*" messages
+    # Right now it only matches exact routing keys
+    # something like `@register_message_handler("twilio.*")`
     handler = MESSAGE_HANDLERS.get(routing_key)
     if not handler:
         logger.info("No handler found for routing key: `%s`", routing_key)
-        # Don't requeue - ack done in decorator
+        # Don't requeue here - ack done in decorator
         return
 
     with get_db_connection() as conn, conn.cursor() as cursor:
@@ -174,7 +177,9 @@ class RabbitMQBaseConsumer:
                 },
             )
             self.channel.queue_bind(
-                exchange=RABBITMQ_DL_EXCHANGE, queue=RABBITMQ_DL_QUEUE
+                exchange=RABBITMQ_DL_EXCHANGE,
+                queue=RABBITMQ_DL_QUEUE,
+                # Leaving out routing key, as it's a direct exchange, meaning it's a 1:1 binding
             )
 
             # Primary
@@ -232,6 +237,7 @@ class PrimaryQueueConsumer(RabbitMQBaseConsumer):
             queue=POSTGRES_QUEUE, on_message_callback=callback, auto_ack=False
         )
         # callback -> process_message (wrapped by decorator) -> handler -> database
+        # If a message fails to be processed, it will be requeued with an incremented retry count
         logger.info("Primary queue consumer ready to consume messages.")
         try:
             self.channel.start_consuming()

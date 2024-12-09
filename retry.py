@@ -7,8 +7,6 @@ from config import (
     RABBITMQ_EXCHANGE,
     RABBITMQ_DL_EXCHANGE,
     MAX_RETRIES,
-    RABBITMQ_DL_QUEUE,
-    POSTGRES_QUEUE,
 )
 from utils.logging import configure_logging
 
@@ -34,7 +32,7 @@ def retry_message(ch, method, body, retry_count):
             method.routing_key,
         )
         exchange = RABBITMQ_DL_EXCHANGE
-        routing_key = RABBITMQ_DL_QUEUE
+        routing_key = ""  # Empty routing key routes to all queues bound to the exchange
     else:
         logger.warning(
             "Retrying message. Retry count: %d for routing key: %s",
@@ -42,7 +40,8 @@ def retry_message(ch, method, body, retry_count):
             method.routing_key,
         )
         exchange = RABBITMQ_EXCHANGE
-        routing_key = POSTGRES_QUEUE
+        routing_key = method.routing_key
+        # Don't change the routing key since it is used to determine the handler
 
     # Publish the message with updated headers
     headers = {"x-retry-count": retry_count + 1}
