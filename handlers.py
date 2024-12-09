@@ -202,7 +202,7 @@ def handle_message_event(message, cursor):
 
     # Build and execute the SQL query
     query, values = build_insert_query(GROUPME_TABLE, columns, values)
-    cursor.execute(query, values)
+    execute_query(cursor, query, values)
 
 
 @register_message_handler("groupme.img")
@@ -234,7 +234,7 @@ def handle_image_event(message, cursor):
     ]
 
     query, values = build_insert_query(GROUPME_TABLE, columns, values)
-    cursor.execute(query, values)
+    execute_query(cursor, query, values)
 
 
 @register_message_handler("groupme.callback")
@@ -278,7 +278,7 @@ def handle_callback_event(message, cursor):
     ]
 
     query, values = build_insert_query(GROUPME_CALLBACK_TABLE, columns, values)
-    cursor.execute(query, values)
+    execute_query(cursor, query, values)
 
 
 # Example handler for generic messages
@@ -299,4 +299,4 @@ def handle_callback_event(message, cursor):
 #         message.get("artist"),
 #         message.get("timestamp"),
 #     ]
-#     cursor.execute(query, values)
+#     execute_query(cursor, query, values)
