@@ -66,7 +66,8 @@ def execute_query(cursor, query, values):
     Execute a SQL query with the given values.
     """
     try:
-        logger.debug("Executing query: %s", query)
+        resolved_query = query % tuple(values)
+        logger.debug("Executing query: %s", resolved_query)
         cursor.execute(query, values)
     except psycopg.errors.DatabaseError as e:
         logger.error("Database error: %s", e)
