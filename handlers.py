@@ -140,13 +140,13 @@ def handle_outgoing_twilio_sms(message, cursor):
     columns = [
         '"wbor_message_id"',
         '"recipient_number"',
-        '"message"',
+        '"body"',
         '"timestamp"',
     ]
     values = [
         message.get("wbor_message_id"),
         message.get("recipient_number"),
-        message.get("message"),
+        message.get("body"),
         timestamp,
     ]
 
