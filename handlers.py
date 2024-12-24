@@ -94,7 +94,7 @@ def handle_twilio_sms(message, cursor):
             "message_sid",
             "account_sid",
             "messagingservice_sid",
-            "from",
+            "from_num",
             "to",
             "body",
             "num_segments",
