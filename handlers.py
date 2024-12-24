@@ -67,7 +67,7 @@ def handle_twilio_sms(message, cursor):
     # Prepare additional columns and values for From(LocationType) if they exist
     location_columns = []
     location_values = []
-    for loc_type in ["FromCity", "FromState", "FromCountry", "FromZip"]:
+    for loc_type in ["from_city", "from_state", "from_country", "from_zip"]:
         if message.get(loc_type):
             location_columns.append(f'"{loc_type}"')
             location_values.append(message.get(loc_type))
@@ -76,31 +76,32 @@ def handle_twilio_sms(message, cursor):
     media_columns = []
     media_values = []
     for i in range(10):
+        # Keys in the Twilio request body
         media_type_key = f"MediaContentType{i}"
         media_url_key = f"MediaUrl{i}"
 
         if message.get(media_type_key):
-            media_columns.append(f'"MediaContentType{i}"')
+            media_columns.append(f"media_content_type_{i}")
             media_values.append(message.get(media_type_key))
 
         if message.get(media_url_key):
-            media_columns.append(f'"MediaUrl{i}"')
+            media_columns.append(f"media_url_{i}")
             media_values.append(message.get(media_url_key))
 
     # Combine static columns with dynamic columns
     columns = (
         [
-            '"MessageSid"',
-            '"AccountSid"',
-            '"MessagingServiceSid"',
-            '"From"',
-            '"To"',
-            '"Body"',
-            '"NumSegments"',
-            '"NumMedia"',
-            '"ApiVersion"',
-            '"SenderName"',
-            '"wbor_message_id"',
+            "message_sid",
+            "account_sid",
+            "messagingservice_sid",
+            "from",
+            "to",
+            "body",
+            "num_segments",
+            "num_media",
+            "api_version",
+            "sender_name",
+            "wbor_message_id",
         ]
         + location_columns
         + media_columns
