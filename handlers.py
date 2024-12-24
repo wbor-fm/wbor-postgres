@@ -125,6 +125,7 @@ def handle_twilio_sms(message, cursor):
     )
 
     query, values = build_insert_query(MESSAGES_TABLE, columns, values)
+    logger.debug("Executing `twilio.sms.incoming` query: %s", query)
     execute_query(cursor, query, values)
 
 
@@ -152,6 +153,7 @@ def handle_outgoing_twilio_sms(message, cursor):
     ]
 
     query, values = build_insert_query(SENT_MESSAGES_TABLE, columns, values)
+    logger.debug("Executing `twilio.sms.outgoing` query: %s", query)
     execute_query(cursor, query, values)
 
 
@@ -164,6 +166,10 @@ def handle_twilio_voice_intelligence(message, cursor):
     """
     logger.debug("Handling twilio.voice-intelligence message: %s", message)
 
+    # query, values = build_insert_query(TABLE, columns, values)
+    # logger.debug("Executing `twilio.voice-intelligence` query: %s", query)
+    # execute_query(cursor, query, values)
+
 
 @register_message_handler("twilio.call-events")
 def handle_twilio_call_events(message, cursor):
@@ -173,6 +179,10 @@ def handle_twilio_call_events(message, cursor):
     TODO: store audio file?
     """
     logger.debug("Handling twilio.call-events message: %s", message)
+
+    # query, values = build_insert_query(TABLE, columns, values)
+    # logger.debug("Executing `twilio.call-events` query: %s", query)
+    # execute_query(cursor, query, values)
 
 
 @register_message_handler("groupme.msg")
@@ -203,6 +213,7 @@ def handle_message_event(message, cursor):
 
     # Build and execute the SQL query
     query, values = build_insert_query(GROUPME_TABLE, columns, values)
+    logger.debug("Executing `groupme.msg` query: %s", query)
     execute_query(cursor, query, values)
 
 
@@ -235,6 +246,7 @@ def handle_image_event(message, cursor):
     ]
 
     query, values = build_insert_query(GROUPME_TABLE, columns, values)
+    logger.debug("Executing `groupme.img` query: %s", query)
     execute_query(cursor, query, values)
 
 
@@ -279,6 +291,7 @@ def handle_callback_event(message, cursor):
     ]
 
     query, values = build_insert_query(GROUPME_CALLBACK_TABLE, columns, values)
+    logger.debug("Executing `groupme.callback` query: %s", query)
     execute_query(cursor, query, values)
 
 
