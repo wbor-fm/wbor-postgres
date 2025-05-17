@@ -18,7 +18,14 @@ build:
 start: run
 
 run: stop
-	docker run -d --network $(NETWORK_NAME) --name $(CONTAINER_NAME) -v ${HOST_DIR}/logs:/app/logs $(IMAGE_NAME)
+	docker run -d \
+		--network $(NETWORK_NAME) \
+		--name $(CONTAINER_NAME) \
+		--log-driver json-file \
+		--log-opt max-size=5m \
+		--log-opt max-file=2 \
+		-v ${HOST_DIR}/logs:/app/logs \
+		$(IMAGE_NAME)
 
 stop:
 	@echo "Checking if container $(CONTAINER_NAME) is running..."
